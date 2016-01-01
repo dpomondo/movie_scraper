@@ -15,8 +15,10 @@ from bs4 import BeautifulSoup as bs
 
 
 def parse_weird_fandango_date(dt):
-    frmt = "%Y-%m-%dT%H:%M:%S-07:00"
-    return datetime.datetime.strptime(dt, frmt)
+    # dammit fandango, whats with the colon!
+    dt_n = dt[:-3] + dt[-2:]
+    frmt = "%Y-%m-%dT%H:%M:%S%z"
+    return datetime.datetime.strptime(dt_n, frmt)
 
 
 def get_html(targets):
@@ -67,12 +69,18 @@ def printer(results):
         print()
 
 
-def main(verbose=False):
+def main(zips, verbose=False):
     res = {}
     #  targs = ["http://www.fandango.com/80521_movietimes",
              #  "http://www.fandango.com/80521_movietimes?pn=2"
              #  ]
-    targs = ["http://www.fandango.com/80521_movietimes"]
+    #  targs = ["http://www.fandango.com/80521_movietimes"]
+    targs = []
+    if isinstance(zips, str):
+        zips = [zips]
+    for z in zips:
+        assert isinstance(z, str) and len(z) == 5
+        targs.append("http://www.fandango.com/{}_movietimes".format(z))
     while targs:
         if verbose:
             print("getting html from {}".format(targs[0]))
@@ -88,5 +96,10 @@ def main(verbose=False):
 
 
 if __name__ == '__main__':
-    thunder = main(verbose=True)
+    import sys
+    zips = sys.argv[1:]
+    #  if zips is None:
+    if zips == []:
+        zips = ["80521"]
+    thunder = main(zips, verbose=True)
     printer(thunder)
