@@ -104,8 +104,8 @@ def main(zips, verbose=False):
             else:
                 targs.append("http://www.fandango.com/{}_movietimes".format(z))
                 # add new zip code to db:
-                db[z] = {}
-                assert z in db.keys()
+                #  db[z] = {}
+                #  assert z in db.keys()
                 while targs:
                     if verbose:
                         print("getting html from {}".format(targs[0]))
@@ -116,12 +116,11 @@ def main(zips, verbose=False):
                     targs = targs[1:]
                     # add the new results to the current results
                     for key in temp.keys():
-                        if verbose:
+                        if verbose > 2:
                             print("writing {} to {}".format(temp[key],
                                                             key))
                         res[key] = temp[key]
-                        db[z][key] = temp[key]
-                        assert db[z][key] == temp[key]
+                db[z] = res
     # there gotta be a try/finally in there somewhere so we always hit this:
     finally:
         db.close()
