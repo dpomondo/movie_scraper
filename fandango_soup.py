@@ -6,12 +6,19 @@
 #   use:
 #
 #   author:     dpomondo
-#   site:       
+#   site:
 # -----------------------------------------------------------------------------
 
 import requests
 import datetime
+import os
+import shelve
 from bs4 import BeautifulSoup as bs
+
+
+def today_formatted():
+    today = datetime.date.today()
+    return today.strftime("%b_%d_%y")
 
 
 def parse_weird_fandango_date(dt):
@@ -71,27 +78,53 @@ def printer(results):
 
 def main(zips, verbose=False):
     res = {}
-    #  targs = ["http://www.fandango.com/80521_movietimes",
-             #  "http://www.fandango.com/80521_movietimes?pn=2"
-             #  ]
-    #  targs = ["http://www.fandango.com/80521_movietimes"]
     targs = []
     if isinstance(zips, str):
         zips = [zips]
     for z in zips:
-        assert isinstance(z, str) and len(z) == 5
-        targs.append("http://www.fandango.com/{}_movietimes".format(z))
-    while targs:
-        if verbose:
-            print("getting html from {}".format(targs[0]))
-        soup, new_targs = get_html(targs[0])
-        temp = do_the_work(soup)
-        if new_targs is not None:
-            targs.extend(new_targs)
-        targs = targs[1:]
-        # add the new results to the current results
-        for key in temp.keys():
-            res[key] = temp[key]
+        assert isinstance(z, str)
+        assert len(z) == 5
+        assert z.isdecimal()
+    # check the db file:
+    if not os.path.exists(os.path.join(os.curdir, '.db')):
+        os.mkdir('.db')
+    db_target = os.path.join(os.curdir, '.db',
+                             "{}.db".format(today_formatted()))
+    if verbose:
+        print("trying to open {}".format(db_target))
+    try:
+        db = shelve.open(db_target)
+        #  with shelve.open(db_target) as db:
+        for z in zips:
+            if z in db.keys():
+                if verbose:
+                    print("reading {} from database...".format(z))
+                for key in db[z].keys():
+                    res[key] = db[z][key]
+            else:
+                targs.append("http://www.fandango.com/{}_movietimes".format(z))
+                # add new zip code to db:
+                db[z] = {}
+                assert z in db.keys()
+                while targs:
+                    if verbose:
+                        print("getting html from {}".format(targs[0]))
+                    soup, new_targs = get_html(targs[0])
+                    temp = do_the_work(soup)
+                    if new_targs is not None:
+                        targs.extend(new_targs)
+                    targs = targs[1:]
+                    # add the new results to the current results
+                    for key in temp.keys():
+                        if verbose:
+                            print("writing {} to {}".format(temp[key],
+                                                            key))
+                        res[key] = temp[key]
+                        db[z][key] = temp[key]
+                        assert db[z][key] == temp[key]
+    # there gotta be a try/finally in there somewhere so we always hit this:
+    finally:
+        db.close()
     return res
 
 
